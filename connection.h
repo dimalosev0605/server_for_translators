@@ -13,26 +13,25 @@ class Connection : public QObject
 {
     Q_OBJECT
 
-    enum class Method {
-        sign_up,
-        sign_in
-    };
-
     QTcpSocket socket;
     QSqlQuery qry;
     JSonHelper json_helper;
     QByteArray data;
     QString user_name;
     QString user_password;
-    Method method;
-    QString file;
-    qint64 length;
+    JSonHelper::Method method = JSonHelper::Method::initial;
+    QString file_name;
+    qint64 file_size;
 
 private:
-    void log(); // temporary function
-    void cater_client();
-    void sign_up();
+    void log();
+    void process_data(const QByteArray& data);
+    void action();
     void sign_in();
+    void sing_up();
+    void upload_file();
+    void process_upload_file();
+    void get_list_of_files();
 
 private slots:
     void connected();

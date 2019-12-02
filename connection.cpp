@@ -1,7 +1,5 @@
 #include "connection.h"
 
-const QString success_sign_up = "success sign up";
-const QString sign_up_conflict = "sign up conflict";
 
 Connection::Connection(qint64 socket_descriptor, const QSqlDatabase& db, QObject *parent)
     : QObject(parent)
@@ -25,65 +23,133 @@ Connection::~Connection()
     qDebug() << this << " destroyed, thread: " << QThread::currentThreadId();
 }
 
+
 void Connection::log()
 {
-    qDebug() << "user_name = " << user_name;
-    qDebug() << "user_password = " << user_password;
-    qDebug() << "method = " << static_cast<int>(method);
-    qDebug() << "file = " << file;
-    qDebug() << "length = " << length;
+    qDebug() << user_name;
+    qDebug() << user_password;
+    qDebug() << static_cast<int>(method);
+    qDebug() << file_name;
+    qDebug() << "size = " << file_size;
 }
 
-void Connection::cater_client()
+void Connection::process_data(const QByteArray &data)
 {
-    switch (method)
-    {
-    case Method::sign_in:
-    {
+    switch (method) {
+    case JSonHelper::Method::upload_file: {
+        process_upload_file();
+        break;
+    }
+    case JSonHelper::Method::initial: {
+        if(json_helper.is_json(data)) {
+            user_name = json_helper.get_user_name();
+            user_password = json_helper.get_user_password();
+            method = json_helper.get_method();
+            file_name = json_helper.get_file_name();
+            file_size = json_helper.get_file_size();
+            json_helper.clear();
+            const_cast<QByteArray&>(data).clear();
+            action();
+        }
+        else {
+            // resume receive data
+        }
+        break;
+    }
+    }
+}
+
+void Connection::action()
+{
+    log();
+    switch (method) {
+    case JSonHelper::Method::sign_in: {
         sign_in();
         break;
     }
-    case Method::sign_up:
-    {
-        sign_up();
+    case JSonHelper::Method::sign_up: {
+        sing_up();
         break;
     }
+    case JSonHelper::Method::upload_file: {
+        upload_file();
+        break;
     }
-}
-
-void Connection::sign_up()
-{
-    qDebug() << "IN sign up";
-    log();
-    QString str_qry(QString("insert into main (user_name, user_password) values ('%1', '%2')").arg(user_name).arg(user_password));
-    if(qry.exec(str_qry))
-    {
-        // success sign up
-        // need close socket+, create user folder-, write successful notification+.
-        FileManager file_manager;
-        if(file_manager.create_dir_for_user(user_name))
-        {
-            socket.write(json_helper.create_sing_up_answer(success_sign_up));
-            socket.close();
-        }
-        else
-        {
-            // write internal server error.
-        }
+    case JSonHelper::Method::get_list_of_files: {
+        get_list_of_files();
+        break;
     }
-    else
-    {
-        // such user name already exists.
-        socket.write(json_helper.create_sing_up_answer(sign_up_conflict));
-        user_name.clear();
-        user_password.clear();
     }
 }
 
 void Connection::sign_in()
 {
-    qDebug() << "IN sign in";
-    log();
+    QString qry_str = QString("select user_name, user_password from main where user_name = '%1' and user_password = '%2'").arg(user_name).arg(user_password);
+    if(qry.exec(qry_str))
+    {
+        if(qry.size())
+            socket.write(json_helper.create_answer(JSonHelper::State::success_sing_in));
+        else
+            socket.write(json_helper.create_answer(JSonHelper::State::unsuccess_sing_in));
+    }
+    else
+    {
+        socket.write(json_helper.create_answer(JSonHelper::State::internal_server_error));
+    }
+    method = JSonHelper::Method::initial;
+    user_name.clear();
+    user_password.clear();
+}
+
+void Connection::sing_up()
+{
+    QString qry_str = QString("insert into main (user_name, user_password) values ('%1', '%2')").arg(user_name).arg(user_password);
+    if(qry.exec(qry_str))
+    {
+        FileManager file_manager;
+        if(file_manager.create_dir_for_user(user_name))
+            socket.write(json_helper.create_answer(JSonHelper::State::success_sign_up));
+        else
+            socket.write(json_helper.create_answer(JSonHelper::State::internal_server_error));
+    }
+    else
+    {
+        socket.write(json_helper.create_answer(JSonHelper::State::unsuccess_sign_up));
+    }
+    method = JSonHelper::Method::initial;
+    user_name.clear();
+    user_password.clear();
+}
+
+void Connection::upload_file()
+{
+    socket.write(json_helper.create_answer(JSonHelper::State::ready_upload_file));
+}
+
+void Connection::process_upload_file()
+{
+    if(data.size() == file_size) {
+        FileManager file_manager;
+        QFile file(file_manager.get_file_path(user_name, file_name));
+        if(file.open(QIODevice::WriteOnly)) {
+            file.write(data);
+            file.close();
+            data.clear();
+            method = JSonHelper::Method::initial;
+            user_name.clear();
+            user_password.clear();
+            file_name.clear();
+            file_size = 0;
+            socket.write(json_helper.create_answer(JSonHelper::State::success_uploading));
+        }
+    }
+}
+
+void Connection::get_list_of_files()
+{
+    method = JSonHelper::Method::initial;
+    FileManager file_manager;
+    socket.write(json_helper.create_answer_get_user_files(file_manager.get_list_of_files(user_name)));
 }
 
 void Connection::connected()
@@ -102,18 +168,7 @@ void Connection::ready_read()
     qDebug() << this << " ready_read, thread: " << QThread::currentThreadId();
     qint64 bytes_available = socket.bytesAvailable();
     data += socket.read(bytes_available);
-    if(json_helper.is_json_obj(data))
-    {
-        method = static_cast<Method>(json_helper.get_method());
-        user_name = json_helper.get_user_name();
-        user_password = json_helper.get_user_password();
-        data.clear();
-        cater_client();
-    }
-    else
-    {
-        if(data.size() > 1024 * 1024) socket.abort();
-    }
+    process_data(data);
 }
 
 void Connection::bytes_written(qint64 bytes)

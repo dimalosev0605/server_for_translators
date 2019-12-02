@@ -1,42 +1,32 @@
 #include "jsonhelper.h"
 
+const QString name_key = "name";
+const QString password_key = "password";
+const QString method_key = "method";
+const QString file_name_key = "file_name";
+const QString length_key = "length";
 const QString state_key = "state";
+const QString files_key = "files";
+const QString files_dates_key = "files_dates";
 
-bool JSonHelper::is_json_obj(const QByteArray &data)
+bool JSonHelper::is_json(const QByteArray& data)
 {
-    auto json_doc = QJsonDocument::fromJson(data);
-    if(json_doc.isObject())
+    auto doc = QJsonDocument::fromJson(data);
+    if(doc.isObject())
     {
-        auto json_obj = json_doc.object();
+        auto json_obj = doc.object();
         auto json_map = json_obj.toVariantMap();
-        method = static_cast<Method>(json_map["method"].toInt());
-        switch (method) {
-        case Method::sign_in:
-        {
-        }
-        case Method::sign_up:
-        {
-            user_name = json_map["name"].toString();
-            user_password = json_map["password"].toString();
-            return true;
-        }
-        }
-//        file = json_map["file_name"].toString();
-//        length = json_map["length"].toInt();
+        user_name = json_map[name_key].toString();
+        user_password = json_map[password_key].toString();
+        method = static_cast<Method>(json_map[method_key].toInt());
+        file_name = json_map[file_name_key].toString();
+        file_size = json_map[length_key].toLongLong();
+        return true;
     }
     else
     {
-        qDebug() << "not object. Resume receiving";
         return false;
     }
-}
-
-QByteArray JSonHelper::create_sing_up_answer(const QString &state)
-{
-    QJsonObject obj;
-    obj.insert(state_key, QJsonValue::fromVariant(state));
-    QJsonDocument doc(obj);
-    return doc.toJson();
 }
 
 QString JSonHelper::get_user_name() const
@@ -49,20 +39,55 @@ QString JSonHelper::get_user_password() const
     return user_password;
 }
 
+QString JSonHelper::get_file_name() const
+{
+    return file_name;
+}
+
+qint64 JSonHelper::get_file_size() const
+{
+    return file_size;
+}
+
 JSonHelper::Method JSonHelper::get_method() const
 {
     return method;
 }
 
-QString JSonHelper::get_file() const
+void JSonHelper::clear()
 {
-    return file;
+    user_name.clear();
+    user_password.clear();
+    file_name.clear();
+    file_size = 0;
 }
 
-qint64 JSonHelper::get_length() const
+QByteArray JSonHelper::create_answer(JSonHelper::State state)
 {
-    return length;
+    QJsonObject obj;
+    obj.insert(state_key, QJsonValue::fromVariant(static_cast<int>(state)));
+    QJsonDocument doc(obj);
+    return doc.toJson();
 }
+
+QByteArray JSonHelper::create_answer_get_user_files(const QList<std::pair<QString, QString>>& list)
+{
+    QJsonObject obj;
+    QJsonArray files;
+    QJsonArray files_dates;
+    for(int i = 0; i < list.size(); ++i) {
+        files.append(list[i].first);
+        files_dates.append(list[i].second);
+    }
+    obj.insert(files_key, files);
+    obj.insert(files_dates_key, files_dates_key);
+    QJsonDocument doc(obj);
+    return doc.toJson();
+}
+
+
+
+
 
 
 
