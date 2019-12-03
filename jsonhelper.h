@@ -25,7 +25,8 @@ public:
         success_sing_in,
         unsuccess_sing_in,
         ready_upload_file,
-        success_uploading
+        success_uploading,
+        ready_download_file
     };
 
 private:
@@ -34,6 +35,7 @@ private:
     QString file_name;
     qint64 file_size;
     Method method;
+    State state;
 public:
     bool is_json(const QByteArray& data);
     QString get_user_name() const;
@@ -41,9 +43,11 @@ public:
     QString get_file_name() const;
     qint64 get_file_size() const;
     Method get_method() const;
+    State get_state() const;
     void clear();
     QByteArray create_answer(State state);
     QByteArray create_answer_get_user_files(const QList<std::pair<QString, QString>>& list);
+    QByteArray create_answer_download_file(qint64 size);
 };
 
 #endif // JSONHELPER_H

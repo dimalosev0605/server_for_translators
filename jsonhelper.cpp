@@ -21,6 +21,7 @@ bool JSonHelper::is_json(const QByteArray& data)
         method = static_cast<Method>(json_map[method_key].toInt());
         file_name = json_map[file_name_key].toString();
         file_size = json_map[length_key].toLongLong();
+        state = static_cast<State>(json_map[state_key].toInt());
         return true;
     }
     else
@@ -54,6 +55,11 @@ JSonHelper::Method JSonHelper::get_method() const
     return method;
 }
 
+JSonHelper::State JSonHelper::get_state() const
+{
+    return state;
+}
+
 void JSonHelper::clear()
 {
     user_name.clear();
@@ -80,7 +86,15 @@ QByteArray JSonHelper::create_answer_get_user_files(const QList<std::pair<QStrin
         files_dates.append(list[i].second);
     }
     obj.insert(files_key, files);
-    obj.insert(files_dates_key, files_dates_key);
+    obj.insert(files_dates_key, files_dates);
+    QJsonDocument doc(obj);
+    return doc.toJson();
+}
+
+QByteArray JSonHelper::create_answer_download_file(qint64 size)
+{
+    QJsonObject obj;
+    obj.insert(length_key, QJsonValue::fromVariant(size));
     QJsonDocument doc(obj);
     return doc.toJson();
 }

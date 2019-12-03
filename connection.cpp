@@ -40,6 +40,10 @@ void Connection::process_data(const QByteArray &data)
         process_upload_file();
         break;
     }
+    case JSonHelper::Method::download_file: {
+        process_download_file(data);
+        break;
+    }
     case JSonHelper::Method::initial: {
         if(json_helper.is_json(data)) {
             user_name = json_helper.get_user_name();
@@ -48,11 +52,8 @@ void Connection::process_data(const QByteArray &data)
             file_name = json_helper.get_file_name();
             file_size = json_helper.get_file_size();
             json_helper.clear();
-            const_cast<QByteArray&>(data).clear();
+            this->data.clear();
             action();
-        }
-        else {
-            // resume receive data
         }
         break;
     }
@@ -61,7 +62,7 @@ void Connection::process_data(const QByteArray &data)
 
 void Connection::action()
 {
-    log();
+//    log();
     switch (method) {
     case JSonHelper::Method::sign_in: {
         sign_in();
@@ -77,6 +78,10 @@ void Connection::action()
     }
     case JSonHelper::Method::get_list_of_files: {
         get_list_of_files();
+        break;
+    }
+    case JSonHelper::Method::download_file: {
+        download_file();
         break;
     }
     }
@@ -150,6 +155,36 @@ void Connection::get_list_of_files()
     method = JSonHelper::Method::initial;
     FileManager file_manager;
     socket.write(json_helper.create_answer_get_user_files(file_manager.get_list_of_files(user_name)));
+}
+
+void Connection::download_file()
+{
+    FileManager file_manager;
+    QFile file(file_manager.get_file_path(user_name, file_name));
+    socket.write(json_helper.create_answer_download_file(file.size()));
+    data.clear();
+}
+
+void Connection::process_download_file(const QByteArray& data)
+{
+    if(json_helper.is_json(data))
+    {
+        state = json_helper.get_state();
+        if(state == JSonHelper::State::ready_download_file) {
+            FileManager file_manager;
+            QFile file(file_manager.get_file_path(user_name, file_name));
+            if(file.open(QIODevice::ReadOnly)) {
+                socket.write(file.readAll());
+                file.close();
+            }
+            method = JSonHelper::Method::initial;
+            user_name.clear();
+            user_password.clear();
+            file_name.clear();
+            file_size = 0;
+            this->data.clear();
+        }
+    }
 }
 
 void Connection::connected()

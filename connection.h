@@ -22,6 +22,7 @@ class Connection : public QObject
     JSonHelper::Method method = JSonHelper::Method::initial;
     QString file_name;
     qint64 file_size;
+    JSonHelper::State state;
 
 private:
     void log();
@@ -32,6 +33,8 @@ private:
     void upload_file();
     void process_upload_file();
     void get_list_of_files();
+    void download_file();
+    void process_download_file(const QByteArray& data);
 
 private slots:
     void connected();
