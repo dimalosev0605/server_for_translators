@@ -16,7 +16,8 @@ public:
         get_list_of_files,
         download_file,
         upload_file,
-        initial
+        initial,
+        delete_file
     };
     enum class State {
         success_sign_up,
@@ -26,7 +27,8 @@ public:
         unsuccess_sing_in,
         ready_upload_file,
         success_uploading,
-        ready_download_file
+        ready_download_file,
+        success_deletion
     };
 
 private:
@@ -45,9 +47,9 @@ public:
     Method get_method() const;
     State get_state() const;
     void clear();
-    QByteArray create_answer(State state);
-    QByteArray create_answer_get_user_files(const QList<std::pair<QString, QString>>& list);
-    QByteArray create_answer_download_file(qint64 size);
+    QByteArray create_state_response(State state);
+    QByteArray create_get_user_files_response(const QList<std::pair<QString, QString>>& list);
+    QByteArray create_download_file_response(qint64 size);
 };
 
 #endif // JSONHELPER_H

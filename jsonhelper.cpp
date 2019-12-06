@@ -16,9 +16,9 @@ bool JSonHelper::is_json(const QByteArray& data)
     {
         auto json_obj = doc.object();
         auto json_map = json_obj.toVariantMap();
+        method = static_cast<Method>(json_map[method_key].toInt());
         user_name = json_map[name_key].toString();
         user_password = json_map[password_key].toString();
-        method = static_cast<Method>(json_map[method_key].toInt());
         file_name = json_map[file_name_key].toString();
         file_size = json_map[length_key].toLongLong();
         state = static_cast<State>(json_map[state_key].toInt());
@@ -68,7 +68,7 @@ void JSonHelper::clear()
     file_size = 0;
 }
 
-QByteArray JSonHelper::create_answer(JSonHelper::State state)
+QByteArray JSonHelper::create_state_response(JSonHelper::State state)
 {
     QJsonObject obj;
     obj.insert(state_key, QJsonValue::fromVariant(static_cast<int>(state)));
@@ -76,7 +76,7 @@ QByteArray JSonHelper::create_answer(JSonHelper::State state)
     return doc.toJson();
 }
 
-QByteArray JSonHelper::create_answer_get_user_files(const QList<std::pair<QString, QString>>& list)
+QByteArray JSonHelper::create_get_user_files_response(const QList<std::pair<QString, QString>>& list)
 {
     QJsonObject obj;
     QJsonArray files;
@@ -91,7 +91,7 @@ QByteArray JSonHelper::create_answer_get_user_files(const QList<std::pair<QStrin
     return doc.toJson();
 }
 
-QByteArray JSonHelper::create_answer_download_file(qint64 size)
+QByteArray JSonHelper::create_download_file_response(qint64 size)
 {
     QJsonObject obj;
     obj.insert(length_key, QJsonValue::fromVariant(size));

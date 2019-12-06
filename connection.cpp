@@ -33,7 +33,7 @@ void Connection::log()
     qDebug() << "size = " << file_size;
 }
 
-void Connection::process_data(const QByteArray &data)
+void Connection::process_data()
 {
     switch (method) {
     case JSonHelper::Method::upload_file: {
@@ -41,20 +41,11 @@ void Connection::process_data(const QByteArray &data)
         break;
     }
     case JSonHelper::Method::download_file: {
-        process_download_file(data);
+        process_download_file();
         break;
     }
     case JSonHelper::Method::initial: {
-        if(json_helper.is_json(data)) {
-            user_name = json_helper.get_user_name();
-            user_password = json_helper.get_user_password();
-            method = json_helper.get_method();
-            file_name = json_helper.get_file_name();
-            file_size = json_helper.get_file_size();
-            json_helper.clear();
-            this->data.clear();
-            action();
-        }
+        initial();
         break;
     }
     }
@@ -62,7 +53,6 @@ void Connection::process_data(const QByteArray &data)
 
 void Connection::action()
 {
-//    log();
     switch (method) {
     case JSonHelper::Method::sign_in: {
         sign_in();
@@ -72,16 +62,20 @@ void Connection::action()
         sing_up();
         break;
     }
-    case JSonHelper::Method::upload_file: {
-        upload_file();
-        break;
-    }
     case JSonHelper::Method::get_list_of_files: {
         get_list_of_files();
         break;
     }
+    case JSonHelper::Method::upload_file: {
+        upload_file();
+        break;
+    }
     case JSonHelper::Method::download_file: {
         download_file();
+        break;
+    }
+    case JSonHelper::Method::delete_file: {
+        delete_file();
         break;
     }
     }
@@ -93,13 +87,13 @@ void Connection::sign_in()
     if(qry.exec(qry_str))
     {
         if(qry.size())
-            socket.write(json_helper.create_answer(JSonHelper::State::success_sing_in));
+            socket.write(json_helper.create_state_response(JSonHelper::State::success_sing_in));
         else
-            socket.write(json_helper.create_answer(JSonHelper::State::unsuccess_sing_in));
+            socket.write(json_helper.create_state_response(JSonHelper::State::unsuccess_sing_in));
     }
     else
     {
-        socket.write(json_helper.create_answer(JSonHelper::State::internal_server_error));
+        socket.write(json_helper.create_state_response(JSonHelper::State::internal_server_error));
     }
     method = JSonHelper::Method::initial;
     user_name.clear();
@@ -113,13 +107,13 @@ void Connection::sing_up()
     {
         FileManager file_manager;
         if(file_manager.create_dir_for_user(user_name))
-            socket.write(json_helper.create_answer(JSonHelper::State::success_sign_up));
+            socket.write(json_helper.create_state_response(JSonHelper::State::success_sign_up));
         else
-            socket.write(json_helper.create_answer(JSonHelper::State::internal_server_error));
+            socket.write(json_helper.create_state_response(JSonHelper::State::internal_server_error));
     }
     else
     {
-        socket.write(json_helper.create_answer(JSonHelper::State::unsuccess_sign_up));
+        socket.write(json_helper.create_state_response(JSonHelper::State::unsuccess_sign_up));
     }
     method = JSonHelper::Method::initial;
     user_name.clear();
@@ -128,7 +122,7 @@ void Connection::sing_up()
 
 void Connection::upload_file()
 {
-    socket.write(json_helper.create_answer(JSonHelper::State::ready_upload_file));
+    socket.write(json_helper.create_state_response(JSonHelper::State::ready_upload_file));
 }
 
 void Connection::process_upload_file()
@@ -139,14 +133,17 @@ void Connection::process_upload_file()
         if(file.open(QIODevice::WriteOnly)) {
             file.write(data);
             file.close();
-            data.clear();
-            method = JSonHelper::Method::initial;
-            user_name.clear();
-            user_password.clear();
-            file_name.clear();
-            file_size = 0;
-            socket.write(json_helper.create_answer(JSonHelper::State::success_uploading));
+            socket.write(json_helper.create_state_response(JSonHelper::State::success_uploading));
         }
+        else {
+            socket.write(json_helper.create_state_response(JSonHelper::State::internal_server_error));
+        }
+        data.clear();
+        method = JSonHelper::Method::initial;
+        user_name.clear();
+        user_password.clear();
+        file_name.clear();
+        file_size = 0;
     }
 }
 
@@ -154,18 +151,17 @@ void Connection::get_list_of_files()
 {
     method = JSonHelper::Method::initial;
     FileManager file_manager;
-    socket.write(json_helper.create_answer_get_user_files(file_manager.get_list_of_files(user_name)));
+    socket.write(json_helper.create_get_user_files_response(file_manager.get_list_of_files(user_name)));
 }
 
 void Connection::download_file()
 {
     FileManager file_manager;
     QFile file(file_manager.get_file_path(user_name, file_name));
-    socket.write(json_helper.create_answer_download_file(file.size()));
-    data.clear();
+    socket.write(json_helper.create_download_file_response(file.size()));
 }
 
-void Connection::process_download_file(const QByteArray& data)
+void Connection::process_download_file()
 {
     if(json_helper.is_json(data))
     {
@@ -177,14 +173,50 @@ void Connection::process_download_file(const QByteArray& data)
                 socket.write(file.readAll());
                 file.close();
             }
+            else {
+                socket.write(json_helper.create_state_response(JSonHelper::State::internal_server_error));
+            }
             method = JSonHelper::Method::initial;
+            json_helper.clear();
+            data.clear();
             user_name.clear();
             user_password.clear();
             file_name.clear();
             file_size = 0;
-            this->data.clear();
         }
     }
+}
+
+void Connection::initial()
+{
+    if(json_helper.is_json(data)) {
+        user_name = json_helper.get_user_name();
+        user_password = json_helper.get_user_password();
+        method = json_helper.get_method();
+        file_name = json_helper.get_file_name();
+        file_size = json_helper.get_file_size();
+        json_helper.clear();
+        data.clear();
+        action();
+    }
+}
+
+void Connection::delete_file()
+{
+    FileManager file_manager;
+    QFile file(file_manager.get_file_path(user_name, file_name));
+    if(file.remove()) {
+        socket.write(json_helper.create_state_response(JSonHelper::State::success_deletion));
+    }
+    else {
+        socket.write(json_helper.create_state_response(JSonHelper::State::internal_server_error));
+    }
+    data.clear();
+    method = JSonHelper::Method::initial;
+    user_name.clear();
+    user_password.clear();
+    file_name.clear();
+    file_size = 0;
 }
 
 void Connection::connected()
@@ -203,7 +235,7 @@ void Connection::ready_read()
     qDebug() << this << " ready_read, thread: " << QThread::currentThreadId();
     qint64 bytes_available = socket.bytesAvailable();
     data += socket.read(bytes_available);
-    process_data(data);
+    process_data();
 }
 
 void Connection::bytes_written(qint64 bytes)

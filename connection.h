@@ -26,7 +26,7 @@ class Connection : public QObject
 
 private:
     void log();
-    void process_data(const QByteArray& data);
+    void process_data();
     void action();
     void sign_in();
     void sing_up();
@@ -34,7 +34,9 @@ private:
     void process_upload_file();
     void get_list_of_files();
     void download_file();
-    void process_download_file(const QByteArray& data);
+    void process_download_file();
+    void initial();
+    void delete_file();
 
 private slots:
     void connected();
