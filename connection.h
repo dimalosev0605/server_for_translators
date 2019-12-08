@@ -19,24 +19,24 @@ class Connection : public QObject
     QByteArray data;
     QString user_name;
     QString user_password;
-    JSonHelper::Method method = JSonHelper::Method::initial;
     QString file_name;
-    qint64 file_size;
-    JSonHelper::State state;
+    qint64 file_size = 0;
+    JSonHelper::Token token;
 
 private:
-    void log();
     void process_data();
-    void action();
-    void sign_in();
-    void sing_up();
-    void upload_file();
-    void process_upload_file();
-    void get_list_of_files();
-    void download_file();
-    void process_download_file();
-    void initial();
-    void delete_file();
+    void response();
+    void sing_in_r();
+    void sing_up_r();
+    void upload_file_r();
+    void save_user_file();
+    void send_list_of_files();
+    void download_file_r();
+    void send_file();
+    void delete_file_r();
+
+    void log();
+    void clear();
 
 private slots:
     void connected();

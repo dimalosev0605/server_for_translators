@@ -2,7 +2,8 @@
 
 const QString name_key = "name";
 const QString password_key = "password";
-const QString method_key = "method";
+const QString token_key = "token";
+
 const QString file_name_key = "file_name";
 const QString length_key = "length";
 const QString state_key = "state";
@@ -12,20 +13,17 @@ const QString files_dates_key = "files_dates";
 bool JSonHelper::is_json(const QByteArray& data)
 {
     auto doc = QJsonDocument::fromJson(data);
-    if(doc.isObject())
-    {
+    if(!doc.isNull()) {
         auto json_obj = doc.object();
         auto json_map = json_obj.toVariantMap();
-        method = static_cast<Method>(json_map[method_key].toInt());
+        token = static_cast<Token>(json_map[token_key].toInt());
         user_name = json_map[name_key].toString();
         user_password = json_map[password_key].toString();
         file_name = json_map[file_name_key].toString();
         file_size = json_map[length_key].toLongLong();
-        state = static_cast<State>(json_map[state_key].toInt());
         return true;
     }
-    else
-    {
+    else {
         return false;
     }
 }
@@ -50,14 +48,9 @@ qint64 JSonHelper::get_file_size() const
     return file_size;
 }
 
-JSonHelper::Method JSonHelper::get_method() const
+JSonHelper::Token JSonHelper::get_token() const
 {
-    return method;
-}
-
-JSonHelper::State JSonHelper::get_state() const
-{
-    return state;
+    return token;
 }
 
 void JSonHelper::clear()
@@ -68,36 +61,52 @@ void JSonHelper::clear()
     file_size = 0;
 }
 
-QByteArray JSonHelper::create_state_response(JSonHelper::State state)
+QByteArray JSonHelper::create_response(JSonHelper::Token token)
 {
     QJsonObject obj;
-    obj.insert(state_key, QJsonValue::fromVariant(static_cast<int>(state)));
-    QJsonDocument doc(obj);
+    obj.insert(token_key, static_cast<int>(token));
+
+    QJsonDocument doc;
+    doc.setObject(obj);
     return doc.toJson();
 }
 
-QByteArray JSonHelper::create_get_user_files_response(const QList<std::pair<QString, QString>>& list)
+QByteArray JSonHelper::create_list_of_files_response(const QList<std::pair<QString, QString>>& list)
 {
     QJsonObject obj;
-    QJsonArray files;
-    QJsonArray files_dates;
+    obj.insert(token_key, static_cast<int>(Token::list_of_files));
+    QJsonArray files_arr;
+    QJsonArray files_dates_arr;
     for(int i = 0; i < list.size(); ++i) {
-        files.append(list[i].first);
-        files_dates.append(list[i].second);
+        files_arr.append(list[i].first);
+        files_dates_arr.append(list[i].second);
     }
-    obj.insert(files_key, files);
-    obj.insert(files_dates_key, files_dates);
-    QJsonDocument doc(obj);
+    obj.insert(files_key, files_arr);
+    obj.insert(files_dates_key, files_dates_arr);
+
+    QJsonDocument doc;
+    doc.setObject(obj);
     return doc.toJson();
 }
 
-QByteArray JSonHelper::create_download_file_response(qint64 size)
+QByteArray JSonHelper::create_download_file_response(qint64 file_size)
 {
     QJsonObject obj;
-    obj.insert(length_key, QJsonValue::fromVariant(size));
-    QJsonDocument doc(obj);
+    obj.insert(token_key, static_cast<int>(Token::ready_send_file));
+    obj.insert(length_key, file_size);
+
+    QJsonDocument doc;
+    doc.setObject(obj);
     return doc.toJson();
 }
+
+
+
+
+
+
+
+
 
 
 

@@ -24,6 +24,6 @@ QList<std::pair<QString, QString>> FileManager::get_list_of_files(const QString 
     auto list = dir.entryInfoList();
     QList<std::pair<QString, QString>> files;
     for(int i = 0; i < list.size(); ++i)
-        files.push_back({{list[i].baseName()},{list[i].lastModified().toString()}});
+        files.push_back({{list[i].baseName()},{list[i].lastModified().toString("dd.MM.yy hh:mm:ss")}});
     return files;
 }
