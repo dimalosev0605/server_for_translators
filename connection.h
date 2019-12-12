@@ -35,7 +35,6 @@ private:
     void send_file();
     void delete_file_r();
 
-    void log();
     void clear();
 
 private slots:

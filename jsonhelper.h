@@ -28,15 +28,17 @@ public:
     };
 
     bool is_json(const QByteArray& data);
+
     QString get_user_name() const;
     QString get_user_password() const;
     QString get_file_name() const;
     qint64 get_file_size() const;
     Token get_token() const;
-    void clear();
+
     QByteArray create_response(Token token);
     QByteArray create_list_of_files_response(const QList<std::pair<QString, QString>>& list);
     QByteArray create_download_file_response(qint64 file_size);
+    void clear();
 
 private:
     QString user_name;

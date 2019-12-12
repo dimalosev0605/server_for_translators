@@ -45,7 +45,6 @@ void Connection::process_data()
         file_size = json_helper.get_file_size();
         json_helper.clear();
         data.clear();
-        log();
         response();
     } // else resume receive data...
 }
@@ -160,8 +159,6 @@ void Connection::send_file()
 {
     FileManager file_manager;
     QFile file(file_manager.get_file_path(user_name, file_name));
-    qDebug() << "file_name = " << file_name;
-    qDebug() << "user_name = " << user_name;
     if(file.open(QIODevice::ReadOnly)) {
         socket.write(file.readAll());
         file.close();
@@ -184,10 +181,6 @@ void Connection::delete_file_r()
     }
 }
 
-void Connection::log()
-{
-    qDebug() << user_name << " " << user_password  << " " << static_cast<int>(token);
-}
 
 void Connection::clear()
 {
